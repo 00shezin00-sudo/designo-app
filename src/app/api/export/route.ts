@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
     try {
       const project = await getProject(projectId);
       return NextResponse.json({ project });
-    } catch (err) {
-      return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
   }
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await exportToLovable(spec);
     return NextResponse.json(result);
-  } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

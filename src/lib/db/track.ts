@@ -1,9 +1,9 @@
 import { supabase } from './client';
 
-export async function trackDecision(data: {
+interface TrackDecisionData {
   userId: string;
   prompt: string;
-  classification?: any;
+  classification?: Record<string, unknown>;
   questions?: string[];
   answers?: Record<string, string>;
   output?: string;
@@ -11,7 +11,9 @@ export async function trackDecision(data: {
   modelsUsed?: string[];
   cost?: number;
   latencyMs?: number;
-}) {
+}
+
+export async function trackDecision(data: TrackDecisionData) {
   return supabase.from('design_decisions').insert({
     user_id: data.userId,
     prompt: data.prompt,

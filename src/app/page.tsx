@@ -5,18 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { scoreGeneric, getGenericWarning } from '@/lib/generic-score';
+import type { GenerateResult, ActiveBrief } from '@/lib/types';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [phase, setPhase] = useState<'input' | 'clarifying' | 'generating' | 'result' | 'exporting'>('input');
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<GenerateResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [genericScore, setGenericScore] = useState<number | null>(null);
-  const [activeBrief, setActiveBrief] = useState<any>(null);
+  const [activeBrief, setActiveBrief] = useState<ActiveBrief | null>(null);
   const [lovableUrl, setLovableUrl] = useState<string | null>(null);
   const [lovablePrompt, setLovablePrompt] = useState<string | null>(null);
 
@@ -169,8 +169,8 @@ export default function Home() {
                     <p className="text-sm font-medium">Originality Score</p>
                     <p className="text-2xl font-bold">{genericScore}/100</p>
                   </div>
-                  {getGenericWarning(result.output) && (
-                    <p className="text-sm text-amber-400 max-w-md text-right">{getGenericWarning(result.output)}</p>
+                  {genericScore !== null && getGenericWarning(genericScore) && (
+                    <p className="text-sm text-amber-400 max-w-md text-right">{getGenericWarning(genericScore)}</p>
                   )}
                 </CardContent>
               </Card>

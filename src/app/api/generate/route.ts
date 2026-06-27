@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { askAI } from '@/lib/ask-ai';
+import { askAI, type TaskType } from '@/lib/ask-ai';
 import { trackDecision } from '@/lib/db/track';
 
 export async function POST(req: NextRequest) {
   const { prompt, task, brandBrief, answers, userId = 'anonymous' } = await req.json();
-  const start = Date.now();
-  
+
   const enrichedPrompt = `
 BRAND BRIEF:
 ${brandBrief || 'No brand brief set. Use general best practices.'}
@@ -21,7 +20,7 @@ Generate the output. Include a "RATIONALE" section explaining every major design
 
   try {
     const [mainResult, rationaleResult] = await Promise.all([
-      askAI(enrichedPrompt, task as any),
+      askAI(enrichedPrompt, task as TaskType),
       askAI(`Explain the design reasoning for: ${prompt}`, 'design-rationale'),
     ]);
 
@@ -49,7 +48,7 @@ Generate the output. Include a "RATIONALE" section explaining every major design
         totalLatency,
       }
     });
-  } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

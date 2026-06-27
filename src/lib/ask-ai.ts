@@ -16,9 +16,9 @@ const openrouter = createOpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-type TaskType = 'generate-design' | 'generate-code' | 'design-rationale' | 'brand-brief' | 'critique' | 'clarify';
+export type TaskType = 'generate-design' | 'generate-code' | 'design-rationale' | 'brand-brief' | 'critique' | 'clarify';
 
-interface AIResponse {
+export interface AIResponse {
   content: string;
   model: string;
   cost: number;

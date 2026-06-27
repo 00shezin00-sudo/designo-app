@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askAI } from '@/lib/ask-ai';
+import type { BrandBriefContent } from '@/lib/types';
+
+function buildFallbackPrompt(prompt: string, brandBrief?: string): string {
+  if (!brandBrief) return `Build a web app from this design brief: ${prompt.substring(0, 500)}`;
+  try {
+    const brief: BrandBriefContent = JSON.parse(brandBrief);
+    return `Build a ${brief.name || 'web app'} that embodies: ${brief.mission || ''}. Voice: ${brief.voice || ''}. Visual direction: ${brief.visual?.mood || ''}. Target: ${brief.targetAudience?.primary || ''}.`;
+  } catch {
+    return `Build a web app from this design brief: ${prompt.substring(0, 500)}`;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { designOutput, rationale, prompt, brandBrief } = await req.json();
@@ -25,21 +36,19 @@ ${rationale}
 
 ORIGINAL REQUEST:
 ${prompt}
-${brandBrief ? `\nBRAND BRIEF:\n${JSON.stringify(brandBrief)}` : ''}
+${brandBrief ? `\nBRAND BRIEF:\n${brandBrief}` : ''}
 `;
 
   try {
     const result = await askAI(lovablePrompt, 'generate-code');
-    
+
     return NextResponse.json({
       lovablePrompt: result.content.trim(),
       lovableUrl: `https://lovable.dev/new?prompt=${encodeURIComponent(result.content.trim().substring(0, 2000))}`,
     });
-  } catch (err) {
-    const fallbackPrompt = brandBrief
-      ? `Build a ${brandBrief.content?.name || 'web app'} that embodies: ${brandBrief.content?.mission || ''}. Voice: ${brandBrief.content?.voice || ''}. Visual direction: ${brandBrief.content?.visual?.mood || ''}. Target: ${brandBrief.content?.targetAudience?.primary || ''}.`
-      : `Build a web app from this design brief: ${prompt.substring(0, 500)}`;
-    
+  } catch {
+    const fallbackPrompt = buildFallbackPrompt(prompt, brandBrief);
+
     return NextResponse.json({
       lovablePrompt: fallbackPrompt,
       lovableUrl: `https://lovable.dev/new?prompt=${encodeURIComponent(fallbackPrompt)}`,
