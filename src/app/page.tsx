@@ -10,13 +10,15 @@ import { scoreGeneric, getGenericWarning } from '@/lib/generic-score';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
-  const [phase, setPhase] = useState<'input' | 'clarifying' | 'generating' | 'result'>('input');
+  const [phase, setPhase] = useState<'input' | 'clarifying' | 'generating' | 'result' | 'exporting'>('input');
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [genericScore, setGenericScore] = useState<number | null>(null);
   const [activeBrief, setActiveBrief] = useState<any>(null);
+  const [lovableUrl, setLovableUrl] = useState<string | null>(null);
+  const [lovablePrompt, setLovablePrompt] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/brand-brief', { headers: { 'x-user-id': 'anonymous' } })
@@ -47,6 +49,21 @@ export default function Home() {
     }
 
     await generate(classification.primaryTask, {});
+  };
+
+  const handleExport = async () => {
+    if (!result) return;
+    setPhase('exporting');
+    const brandBriefContent = activeBrief?.content ? JSON.stringify(activeBrief.content) : undefined;
+    const res = await fetch('/api/lovable-bridge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ designOutput: result.output, rationale: result.rationale, prompt, brandBrief: brandBriefContent }),
+    });
+    const data = await res.json();
+    setLovableUrl(data.lovableUrl);
+    setLovablePrompt(data.lovablePrompt);
+    setPhase('result');
   };
 
   const generate = async (task: string, ans: Record<number, string>) => {
@@ -134,6 +151,15 @@ export default function Home() {
           </div>
         )}
 
+        {phase === 'exporting' && (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center space-y-4">
+              <div className="animate-spin w-8 h-8 border-2 border-neutral-600 border-t-violet-500 rounded-full mx-auto" />
+              <p className="text-neutral-400">Preparing Lovable prompt...</p>
+            </div>
+          </div>
+        )}
+
         {phase === 'result' && result && (
           <div className="space-y-6">
             {genericScore !== null && (
@@ -176,11 +202,33 @@ export default function Home() {
               </CardContent>
             </Card>
 
+            {lovablePrompt && (
+              <Card className="bg-neutral-900 border-neutral-800 border-l-4 border-l-violet-500">
+                <CardHeader>
+                  <CardTitle className="text-violet-400">Lovable Bridge</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-neutral-400">This prompt was generated for Lovable to turn your design into a working app.</p>
+                  <pre className="whitespace-pre-wrap text-sm text-neutral-300 bg-neutral-800 p-4 rounded-lg overflow-auto max-h-48">
+                    {lovablePrompt}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex gap-4">
-              <Button variant="outline" onClick={() => { setPhase('input'); setResult(null); setGenericScore(null); }} className="flex-1">
+              <Button variant="outline" onClick={() => { setPhase('input'); setResult(null); setGenericScore(null); setLovableUrl(null); setLovablePrompt(null); }} className="flex-1">
                 New Design
               </Button>
-              <Button className="flex-1">Export to Code</Button>
+              {lovableUrl ? (
+                <Button className="flex-1" onClick={() => window.open(lovableUrl, '_blank')}>
+                  Open in Lovable
+                </Button>
+              ) : (
+                <Button className="flex-1" onClick={handleExport}>
+                  Export to Code
+                </Button>
+              )}
             </div>
           </div>
         )}
