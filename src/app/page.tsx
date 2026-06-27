@@ -55,10 +55,10 @@ export default function Home() {
     if (!result) return;
     setPhase('exporting');
     const brandBriefContent = activeBrief?.content ? JSON.stringify(activeBrief.content) : undefined;
-    const res = await fetch('/api/lovable-bridge', {
+    const res = await fetch('/api/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ designOutput: result.output, rationale: result.rationale, prompt, brandBrief: brandBriefContent }),
+      body: JSON.stringify({ designOutput: result.output, rationale: result.rationale, prompt, brandBrief: brandBriefContent, answers }),
     });
     const data = await res.json();
     setLovableUrl(data.lovableUrl);
