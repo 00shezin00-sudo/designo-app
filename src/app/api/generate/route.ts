@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { askAI } from '@/lib/ask-ai';
+import { trackDecision } from '@/lib/db/track';
 
 export async function POST(req: NextRequest) {
-  const { prompt, task, brandBrief, answers } = await req.json();
+  const { prompt, task, brandBrief, answers, userId = 'anonymous' } = await req.json();
+  const start = Date.now();
   
   const enrichedPrompt = `
 BRAND BRIEF:
@@ -23,14 +25,28 @@ Generate the output. Include a "RATIONALE" section explaining every major design
       askAI(`Explain the design reasoning for: ${prompt}`, 'design-rationale'),
     ]);
 
+    const totalCost = mainResult.cost + rationaleResult.cost;
+    const totalLatency = mainResult.latency + rationaleResult.latency;
+
+    await trackDecision({
+      userId,
+      prompt,
+      answers,
+      output: mainResult.content,
+      rationale: rationaleResult.content,
+      modelsUsed: [mainResult.model, rationaleResult.model],
+      cost: totalCost,
+      latencyMs: totalLatency,
+    });
+
     return NextResponse.json({
       output: mainResult.content,
       rationale: rationaleResult.content,
       meta: {
         mainModel: mainResult.model,
         rationaleModel: rationaleResult.model,
-        totalCost: mainResult.cost + rationaleResult.cost,
-        totalLatency: mainResult.latency + rationaleResult.latency,
+        totalCost,
+        totalLatency,
       }
     });
   } catch (err) {

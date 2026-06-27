@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { scoreGeneric, getGenericWarning } from '@/lib/generic-score';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
@@ -14,19 +15,28 @@ export default function Home() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [genericScore, setGenericScore] = useState<number | null>(null);
+  const [activeBrief, setActiveBrief] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/brand-brief', { headers: { 'x-user-id': 'anonymous' } })
+      .then(r => r.json())
+      .then(d => setActiveBrief(d.activeBrief));
+  }, []);
 
   const handleSubmit = async () => {
     setLoading(true);
-
     const classifyRes = await fetch('/api/classify', {
       method: 'POST',
-      body: JSON.stringify({ prompt }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, userId: 'anonymous' }),
     });
     const classification = await classifyRes.json();
 
     if (classification.needsClarification || classification.confidence < 0.7) {
       const clarifyRes = await fetch('/api/clarify', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
       const clarifyData = await clarifyRes.json();
@@ -41,11 +51,17 @@ export default function Home() {
 
   const generate = async (task: string, ans: Record<number, string>) => {
     setPhase('generating');
+    const brandBriefContent = activeBrief?.content ? JSON.stringify(activeBrief.content) : undefined;
+    
     const res = await fetch('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ prompt, task, answers: ans }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, task, brandBrief: brandBriefContent, answers: ans, userId: 'anonymous' }),
     });
     const data = await res.json();
+    
+    const score = scoreGeneric(data.output);
+    setGenericScore(score);
     setResult(data);
     setPhase('result');
     setLoading(false);
@@ -55,7 +71,14 @@ export default function Home() {
     <main className="min-h-screen bg-neutral-950 text-neutral-100 p-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Designo</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-bold tracking-tight">Designo</h1>
+            {activeBrief && (
+              <Badge variant="outline" className="border-emerald-600 text-emerald-400">
+                Brief: {activeBrief.content.name}
+              </Badge>
+            )}
+          </div>
           <p className="text-neutral-400">A design partner that asks why before generating.</p>
         </div>
 
@@ -91,8 +114,8 @@ export default function Home() {
                   />
                 </div>
               ))}
-              <Button
-                onClick={() => generate('generate-design', answers)}
+              <Button 
+                onClick={() => generate('generate-design', answers)} 
                 disabled={loading}
                 className="w-full"
               >
@@ -113,6 +136,20 @@ export default function Home() {
 
         {phase === 'result' && result && (
           <div className="space-y-6">
+            {genericScore !== null && (
+              <Card className={`border-l-4 ${genericScore < 30 ? 'border-l-red-500' : genericScore < 50 ? 'border-l-amber-500' : 'border-l-emerald-500'} bg-neutral-900 border-neutral-800`}>
+                <CardContent className="pt-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Originality Score</p>
+                    <p className="text-2xl font-bold">{genericScore}/100</p>
+                  </div>
+                  {getGenericWarning(result.output) && (
+                    <p className="text-sm text-amber-400 max-w-md text-right">{getGenericWarning(result.output)}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-neutral-900 border-neutral-800">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Design Output</CardTitle>
@@ -140,7 +177,7 @@ export default function Home() {
             </Card>
 
             <div className="flex gap-4">
-              <Button variant="outline" onClick={() => setPhase('input')} className="flex-1">
+              <Button variant="outline" onClick={() => { setPhase('input'); setResult(null); setGenericScore(null); }} className="flex-1">
                 New Design
               </Button>
               <Button className="flex-1">Export to Code</Button>
